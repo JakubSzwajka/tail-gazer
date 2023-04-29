@@ -1,6 +1,6 @@
 {
   "name": "tail-gazer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
   "bin": {
@@ -24,5 +24,10 @@
   "exclude": [
     "example",
     "node_modules"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JakubSzwajka/tail-gazer"
+  },
+  "homepage": "https://github.com/JakubSzwajka/tail-gazer/#readme"
 }

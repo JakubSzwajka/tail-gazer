@@ -121,7 +121,7 @@ const main = () => {
 	const program = new Command();
 
 	program
-		.version('1.0.0')
+		.version('1.0')
 		.description('Tail logs of multiple services')
 		.option('-c, --config <path>', 'Path to config file', 'tail-gazer.json');
 
