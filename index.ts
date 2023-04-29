@@ -2,11 +2,14 @@
 
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { spawn } from 'child_process';
+import * as kleur from 'kleur';
 
 interface Service {
-	colorScheme: string;
-	logFile: string;
+	name: string;
+	dir: string;
+	command: string;
+	logFile?: string;
 }
 
 // Read configuration file
@@ -20,18 +23,87 @@ const config: { services: Service[] } = JSON.parse(
 	fs.readFileSync(configFile, 'utf-8')
 );
 
-// Build multitail command
-const multitailCommand = config.services
-	.map(
-		(service) => `-cS ${service.colorScheme} -l "tail -f ${service.logFile}"`
-	)
-	.join(' ');
+const maxLength = config.services.reduce(
+	(max, service) => Math.max(max, service.name.length),
+	0
+);
 
-const command = `multitail ${multitailCommand}`;
+function getRandomColor(): (text: string) => string {
+	const colors = [
+		kleur.green,
+		kleur.yellow,
+		kleur.blue,
+		kleur.magenta,
+		kleur.cyan,
+	];
 
-// Execute multitail command
-try {
-	execSync(command, { stdio: 'inherit' });
-} catch (error: any) {
-	console.error('Error executing multitail command:', error.message);
+	const randomIndex = Math.floor(Math.random() * colors.length);
+	return colors[randomIndex];
 }
+
+const printLogLine = (
+	serviceName: string,
+	line: string,
+	colorize: any,
+	isError = false
+) => {
+	const timestamp = new Date().toLocaleTimeString([], {
+		hour12: false,
+		timeZoneName: undefined,
+	});
+	const logPrefix = colorize(`${timestamp} ${serviceName}`);
+	const logFunc = isError ? console.error : console.log;
+	logFunc(`${logPrefix}  ${line}`);
+};
+
+const logsDir = path.join(process.cwd(), 'tail-gazer-logs');
+if (!fs.existsSync(logsDir)) {
+	fs.mkdirSync(logsDir);
+}
+
+const startService = (service: Service) => {
+	const [command, ...args] = service.command.split(' ');
+	const options = {
+		cwd: path.join(process.cwd(), service.dir),
+		env: { ...process.env, PYTHONUNBUFFERED: '1' },
+	};
+
+	const child = spawn(command, args, options);
+
+	if (service.logFile) {
+		service.logFile = path.join(
+			logsDir,
+			`${service.name.replace(/ /g, '_')}.log`
+		);
+		const logStream = fs.createWriteStream(service.logFile, { flags: 'a' });
+		child.stdout.pipe(logStream);
+		child.stderr.pipe(logStream);
+	}
+
+	const colorize = getRandomColor();
+	const serviceName = service.name.padEnd(maxLength + 1);
+
+	child.stdout.on('data', (data: Buffer) => {
+		const lines = data
+			.toString()
+			.split('\n')
+			.filter((line) => line.trim() !== '');
+		lines.forEach((line) => printLogLine(serviceName, line, colorize));
+	});
+
+	child.stderr.on('data', (data: Buffer) => {
+		const lines = data
+			.toString()
+			.split('\n')
+			.filter((line) => line.trim() !== '');
+		lines.forEach((line) => printLogLine(serviceName, line, colorize, true));
+	});
+
+	child.on('error', (error) => {
+		console.error(`Error starting "${service.name}":`, error.message);
+	});
+
+	console.log(`Started "${service.name}"`);
+};
+
+config.services.forEach(startService);

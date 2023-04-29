@@ -1,0 +1,7 @@
+{
+  "name": "frontend",
+  "main": "index.ts",
+  "scripts": {
+    "start": "ts-node index.ts"
+  }
+}

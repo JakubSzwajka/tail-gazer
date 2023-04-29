@@ -1,0 +1,14 @@
+{
+    "services": [
+        {
+            "name": "Frontend Service",
+            "dir": "frontend",
+            "command": "npm start"
+        },
+        {
+            "name": "Backend Service",
+            "dir": "backend",
+            "command": "python3 main.py"
+        }
+    ]
+}
