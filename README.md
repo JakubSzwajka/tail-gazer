@@ -1,48 +1,49 @@
-# TailGazer
+Tail Gazer
+Tail Gazer is a command-line tool for tailing logs of multiple services.
 
-TailGazer is a command-line tool that uses `multitail` to display logs from multiple services in a single terminal window. TailGazer allows you to define service configurations in a JSON file, making it easy to monitor logs for multiple projects.
+Installation
+Install the package globally with npm:
 
-## Installation
-
-1. Ensure that Node.js and npm are installed on your machine.
-2. Install `multitail` using your package manager. For example, on macOS, you can use Homebrew:
-
-```bash
-brew install multitail
-```
-
-3. Install TailGazer globally:
-```
+Copy code
 npm install -g tail-gazer
-```
+Usage
+The tool expects a configuration file in JSON format, with an array of service objects.
+Each service object should have the following properties:
 
-## Usage
+name: The name of the service.
+dir: The working directory for the service.
+command: The command to start the service.
+logFile: (optional) The file path to log service output to.
+Example configuration:
 
-1. Navigate to your project directory.
-2. Create a tail-gazer.json file in the project directory with the following structure:
-
-```json
+json
+Copy code
 {
   "services": [
     {
-      "colorScheme": "python",
-      "logFile": "backend.log"
+      "name": "Frontend Service",
+      "dir": "./frontend",
+      "command": "npm run dev",
+      "logFile": "./logs/frontend.log"
     },
     {
-      "colorScheme": "javascript",
-      "logFile": "frontend.log"
+      "name": "Backend Service",
+      "dir": "./backend",
+      "command": "python app.py",
+      "logFile": "./logs/backend.log"
     }
   ]
 }
-```
+To run Tail Gazer, navigate to the directory containing your configuration file and run:
 
-Replace the colorScheme and logFile values with the appropriate values for your project.
-
-3. Run tail-gazer
-
-```
+Copy code
 tail-gazer
-```
+By default, Tail Gazer looks for a file named tail-gazer.json. You can specify a different file with the --config or -c option:
 
+arduino
+Copy code
+tail-gazer --config my-tail-gazer-config.json
+The tool will tail the logs of all services specified in the configuration file, printing the output to the console. The tool also creates a tail-gazer-logs directory in the current directory and saves log files there, if logFile property is provided in the configuration.
 
-TailGazer will use the tail-gazer.json file to display logs from the specified services in a single terminal window with the defined color schemes.
+License
+This project is licensed under the MIT License. See the LICENSE file for details.

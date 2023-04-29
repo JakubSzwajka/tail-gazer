@@ -3,7 +3,8 @@
         {
             "name": "Frontend Service",
             "dir": "frontend",
-            "command": "npm start"
+            "command": "npm start",
+            "logFile": "./logs/frontend.log"
         },
         {
             "name": "Backend Service",

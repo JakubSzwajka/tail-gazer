@@ -69,7 +69,11 @@ const startService = (service, startServiceOptions) => {
     };
     const child = (0, child_process_1.spawn)(command, args, options);
     if (service.logFile) {
-        service.logFile = path_1.default.join(startServiceOptions.logsDir, `${service.name.replace(/ /g, '_')}.log`);
+        const logsDir = path_1.default.join(process.cwd(), 'tail-gazer-logs');
+        if (!fs_1.default.existsSync(logsDir)) {
+            fs_1.default.mkdirSync(logsDir);
+        }
+        service.logFile = path_1.default.join(logsDir, `${service.name.replace(/ /g, '_')}.log`);
         const logStream = fs_1.default.createWriteStream(service.logFile, { flags: 'a' });
         child.stdout.pipe(logStream);
         child.stderr.pipe(logStream);
@@ -104,12 +108,7 @@ const main = () => {
     program.parse(process.argv);
     const config = loadConfig(program.opts());
     const maxLength = config.services.reduce((max, service) => Math.max(max, service.name.length), 0);
-    const logsDir = path_1.default.join(process.cwd(), 'tail-gazer-logs');
-    if (!fs_1.default.existsSync(logsDir)) {
-        fs_1.default.mkdirSync(logsDir);
-    }
     const startServiceOptions = {
-        logsDir,
         serviceColumnWidth: maxLength + 1,
     };
     config.services.forEach((service) => {

@@ -6,30 +6,29 @@ import { spawn } from 'child_process';
 import * as kleur from 'kleur';
 import { Command } from 'commander';
 
-interface Service {
+interface ServiceConfig {
 	name: string;
 	dir: string;
 	command: string;
 	logFile?: string;
 }
 
-interface ServiceOptions {
-	logsDir: string;
+interface ServicePrintOptions {
 	serviceColumnWidth: number;
 }
 
-interface ProgramConfig {
+interface CliProgramConfig {
 	config: string;
 }
 
-const loadConfig = (options: ProgramConfig) => {
+const loadConfig = (options: CliProgramConfig) => {
 	const configFile = path.resolve(process.cwd(), options.config);
 	if (!fs.existsSync(configFile)) {
 		console.error('Error: tail-gazer.json not found in the current directory');
 		process.exit(1);
 	}
 
-	const config: { services: Service[] } = JSON.parse(
+	const config: { services: ServiceConfig[] } = JSON.parse(
 		fs.readFileSync(configFile, 'utf-8')
 	);
 
@@ -65,8 +64,8 @@ const printLogLine = (
 };
 
 const startService = (
-	service: Service,
-	startServiceOptions: ServiceOptions
+	service: ServiceConfig,
+	startServiceOptions: ServicePrintOptions
 ) => {
 	const [command, ...args] = service.command.split(' ');
 	const options = {
@@ -77,8 +76,12 @@ const startService = (
 	const child = spawn(command, args, options);
 
 	if (service.logFile) {
+		const logsDir = path.join(process.cwd(), 'tail-gazer-logs');
+		if (!fs.existsSync(logsDir)) {
+			fs.mkdirSync(logsDir);
+		}
 		service.logFile = path.join(
-			startServiceOptions.logsDir,
+			logsDir,
 			`${service.name.replace(/ /g, '_')}.log`
 		);
 		const logStream = fs.createWriteStream(service.logFile, { flags: 'a' });
@@ -123,20 +126,14 @@ const main = () => {
 		.option('-c, --config <path>', 'Path to config file', 'tail-gazer.json');
 
 	program.parse(process.argv);
-	const config = loadConfig(program.opts<ProgramConfig>());
+	const config = loadConfig(program.opts<CliProgramConfig>());
 
 	const maxLength = config.services.reduce(
 		(max, service) => Math.max(max, service.name.length),
 		0
 	);
 
-	const logsDir = path.join(process.cwd(), 'tail-gazer-logs');
-	if (!fs.existsSync(logsDir)) {
-		fs.mkdirSync(logsDir);
-	}
-
-	const startServiceOptions: ServiceOptions = {
-		logsDir,
+	const startServiceOptions: ServicePrintOptions = {
 		serviceColumnWidth: maxLength + 1,
 	};
 
