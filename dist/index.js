@@ -31,15 +31,17 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const child_process_1 = require("child_process");
 const kleur = __importStar(require("kleur"));
-// Read configuration file
-const configFile = path_1.default.resolve(process.cwd(), 'tail-gazer.json');
-if (!fs_1.default.existsSync(configFile)) {
-    console.error('Error: tail-gazer.json not found in the current directory');
-    process.exit(1);
-}
-const config = JSON.parse(fs_1.default.readFileSync(configFile, 'utf-8'));
-const maxLength = config.services.reduce((max, service) => Math.max(max, service.name.length), 0);
-function getRandomColor() {
+const commander_1 = require("commander");
+const loadConfig = (options) => {
+    const configFile = path_1.default.resolve(process.cwd(), options.config);
+    if (!fs_1.default.existsSync(configFile)) {
+        console.error('Error: tail-gazer.json not found in the current directory');
+        process.exit(1);
+    }
+    const config = JSON.parse(fs_1.default.readFileSync(configFile, 'utf-8'));
+    return config;
+};
+const getRandomColor = () => {
     const colors = [
         kleur.green,
         kleur.yellow,
@@ -49,7 +51,7 @@ function getRandomColor() {
     ];
     const randomIndex = Math.floor(Math.random() * colors.length);
     return colors[randomIndex];
-}
+};
 const printLogLine = (serviceName, line, colorize, isError = false) => {
     const timestamp = new Date().toLocaleTimeString([], {
         hour12: false,
@@ -59,11 +61,7 @@ const printLogLine = (serviceName, line, colorize, isError = false) => {
     const logFunc = isError ? console.error : console.log;
     logFunc(`${logPrefix}  ${line}`);
 };
-const logsDir = path_1.default.join(process.cwd(), 'tail-gazer-logs');
-if (!fs_1.default.existsSync(logsDir)) {
-    fs_1.default.mkdirSync(logsDir);
-}
-const startService = (service) => {
+const startService = (service, startServiceOptions) => {
     const [command, ...args] = service.command.split(' ');
     const options = {
         cwd: path_1.default.join(process.cwd(), service.dir),
@@ -71,13 +69,13 @@ const startService = (service) => {
     };
     const child = (0, child_process_1.spawn)(command, args, options);
     if (service.logFile) {
-        service.logFile = path_1.default.join(logsDir, `${service.name.replace(/ /g, '_')}.log`);
+        service.logFile = path_1.default.join(startServiceOptions.logsDir, `${service.name.replace(/ /g, '_')}.log`);
         const logStream = fs_1.default.createWriteStream(service.logFile, { flags: 'a' });
         child.stdout.pipe(logStream);
         child.stderr.pipe(logStream);
     }
     const colorize = getRandomColor();
-    const serviceName = service.name.padEnd(maxLength + 1);
+    const serviceName = service.name.padEnd(startServiceOptions.serviceColumnWidth);
     child.stdout.on('data', (data) => {
         const lines = data
             .toString()
@@ -97,4 +95,25 @@ const startService = (service) => {
     });
     console.log(`Started "${service.name}"`);
 };
-config.services.forEach(startService);
+const main = () => {
+    const program = new commander_1.Command();
+    program
+        .version('0.1')
+        .description('Tail logs of multiple services')
+        .option('-c, --config <path>', 'Path to config file', 'tail-gazer.json');
+    program.parse(process.argv);
+    const config = loadConfig(program.opts());
+    const maxLength = config.services.reduce((max, service) => Math.max(max, service.name.length), 0);
+    const logsDir = path_1.default.join(process.cwd(), 'tail-gazer-logs');
+    if (!fs_1.default.existsSync(logsDir)) {
+        fs_1.default.mkdirSync(logsDir);
+    }
+    const startServiceOptions = {
+        logsDir,
+        serviceColumnWidth: maxLength + 1,
+    };
+    config.services.forEach((service) => {
+        startService(service, startServiceOptions);
+    });
+};
+main();
